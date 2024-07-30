@@ -165,6 +165,7 @@ Node *new_node_num(int val){
 Node *expr();
 Node *primary();
 Node *mul();
+Node *unary();
 
 Node *expr(){
   // expr文法のparser
@@ -184,12 +185,13 @@ Node *expr(){
 
 Node *mul(){
   // mul = primary ("*" primary | "/" primary)* の展開を制作する
-  Node *node = primary();
+  Node *node = unary();
   for (;;){
     if (consume('*')){
-      node = new_node(ND_MUL, node, primary());
-    } else if (consume('/')){
-      node = new_node(ND_DIV, node, primary());
+      node = new_node(ND_MUL, node, unary());
+    }
+    if (consume('/')){
+      node = new_node(ND_DIV, node, unary());
     } else {
       return node;
     }
@@ -205,6 +207,17 @@ Node *primary(){
   }
   // そうじゃなければ数値のはず
   return new_node_num(expect_number()); // 1 * 2 + (3 + 4)の場合1はここに来る
+}
+
+Node *unary(){
+  // unary = ("+" | "-")? unary | primaryらしい, なのでunaryにする
+  if (consume('+')){
+    return unary(); 
+  }
+  if (consume('-')){
+    return new_node(ND_SUB, new_node_num(0), unary());
+  }
+  return primary();
 }
 
 // ASTからStack machineへのコンパイル
