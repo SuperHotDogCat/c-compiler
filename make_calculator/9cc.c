@@ -57,6 +57,7 @@ void error(char *fmt, ...) {
 // 真を返す。それ以外の場合には偽を返す。
 bool consume(char op){
   if (token->kind != TK_RESERVED || token->str[0] != op){
+    // 異なる場合はtokenを進めずfalseのみ出す
     return false;
   }
   token = token->next;
@@ -96,7 +97,11 @@ Token *new_token(TokenKind kind, Token *cur, char *str){
   cur->next = tok;
   return tok;
 }
-
+/*bool is_reserved(char *p){
+  // tokenizerが予見している記号かどうかを判断する関数
+  // strchrで代用可能だったので削除
+  return *p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')';
+}*/
 // 入力文字列pをトークナイズしてそれを返す
 Token *tokenize(char *p){
   Token head;
@@ -107,7 +112,7 @@ Token *tokenize(char *p){
       p++;
       continue;
     }
-    if (*p == '+' || *p == '-'){
+    if (strchr("+-*/()", *p)){
       cur = new_token(TK_RESERVED, cur, p++);
       continue;
     }
@@ -123,6 +128,114 @@ Token *tokenize(char *p){
   return head.next;
 }
 
+// 抽象構文木のノードの種類
+typedef enum {
+  ND_ADD, // +  
+  ND_SUB, // -  
+  ND_MUL, // *  
+  ND_DIV, // /  
+  ND_NUM, // 整数
+} NodeKind;
+
+typedef struct Node Node;// 抽象構文木のノードの型
+
+struct Node {
+  NodeKind kind; // ノードの型  
+  Node *lhs;     // 左辺  
+  Node *rhs;     // 右辺  
+  int val;       // kindがND_NUMの場合のみ使う
+};
+// ノード作成関数を定義する
+Node *new_node(NodeKind kind, Node *lhs, Node *rhs){
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+  return node;
+}
+
+Node *new_node_num(int val){
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  node->val = val;
+  return node;
+}
+
+// 再帰的に使われるのでプロト関数を定義
+Node *expr();
+Node *primary();
+Node *mul();
+
+Node *expr(){
+  // expr文法のparser
+  // expr = mul ("+" mul | "-" mul)* のうち0回ならreturn, +と-ならnodeを伸ばす。つけるNodeはmul
+  Node *node = mul();
+
+  for (;;){
+    if (consume('+')){
+      node = new_node(ND_ADD, node, mul()); // expr = mul + mul lhsに今のnodeを接続
+    } else if (consume('-')){
+      node = new_node(ND_SUB, node, mul()); // expr = mul - mul lhsに今のnodeを接続
+    } else {
+      return node; // expr = mul
+    }
+  }
+}
+
+Node *mul(){
+  // mul = primary ("*" primary | "/" primary)* の展開を制作する
+  Node *node = primary();
+  for (;;){
+    if (consume('*')){
+      node = new_node(ND_MUL, node, primary());
+    } else if (consume('/')){
+      node = new_node(ND_DIV, node, primary());
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *primary(){
+  // primary = num | '(' expr ')' を表現する
+  if (consume('(')){
+    Node *node = expr();
+    expect(')');
+    return node;
+  }
+  // そうじゃなければ数値のはず
+  return new_node_num(expect_number()); // 1 * 2 + (3 + 4)の場合1はここに来る
+}
+
+// ASTからStack machineへのコンパイル
+void gen(Node *node){
+  if (node->kind == ND_NUM){
+    printf("  push %d\n", node->val);
+    return;
+  }
+  gen(node->lhs); // 左辺compile
+  gen(node->rhs); // 右辺compile
+  // ここから下は右辺と左辺ができた前提で話が進む
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  switch (node->kind){
+    case ND_ADD:
+      printf("  add rax, rdi\n");
+      break;
+    case ND_SUB:
+      printf("  sub rax, rdi\n");
+      break;
+    case ND_MUL:
+      printf("  imul rax, rdi\n");
+      break;
+    case ND_DIV:
+      printf("  cqo\n");
+      printf("  idiv rdi\n");
+      break;
+  }
+  printf("  push rax\n");
+}
+
 int main(int argc, char **argv){
   if (argc != 2) {
     error("引数の個数が正しくありません");
@@ -133,15 +246,12 @@ int main(int argc, char **argv){
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");
   printf("main:\n");
-  printf("  mov rax, %d\n", expect_number());
-  while (!at_eof()){
-    if (consume('+')){
-      printf("  add rax, %d\n", expect_number());
-      continue;
-    }
-    consume('-');
-    printf("  sub rax, %d\n", expect_number());
-  }
+  Node *node = expr(); // Create AST
+  gen(node); // compile AST to assembly
+
+  // スタックトップに式全体の値が残っているはずなので
+  // それをRAXにロードして関数からの返り値とする
+  printf("  pop rax\n");
   printf("  ret\n");
   return 0;
 }
