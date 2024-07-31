@@ -57,3 +57,17 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 // ASTからStack machineへのコンパイル
 void gen(Node *node);
+// codegenなどで使われるglobal変数
+// 現在着目しているトークン
+extern Token *token;
+// 入力プログラムargv[1]を格納する変数
+extern char *user_input;
+
+// 再帰的に使われるのでプロト関数を定義
+Node *expr();
+Node *primary();
+Node *mul();
+Node *unary();
+Node *equality();
+Node *relational();
+Node *add();
