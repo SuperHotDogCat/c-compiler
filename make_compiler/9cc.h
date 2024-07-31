@@ -7,6 +7,7 @@ typedef enum {
   TK_IDENT, // 識別子
   TK_NUM, // 整数トークン
   TK_EOF, // 入力の終わりを表すトークン
+  TK_RETURN, // return文を意味するトークン
 } TokenKind; 
 
 typedef struct Token Token;
@@ -30,6 +31,7 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len);
 // parse.cに格納
 bool startswith(char *p, char *q);
 Token *tokenize(char *p);
+bool is_alnum(char c);
 
 // 抽象構文木のノードの種類
 typedef enum {
@@ -44,6 +46,7 @@ typedef enum {
   ND_LE,  // <= or >=
   ND_LVAR,   // ローカル変数
   ND_ASSIGN, // = 
+  ND_RETURN, // return
 } NodeKind;
 
 typedef struct Node Node;// 抽象構文木のノードの型

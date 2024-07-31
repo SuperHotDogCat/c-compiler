@@ -19,6 +19,7 @@ int main(int argc, char **argv){
   }
   user_input = argv[1]; // 先にuser_inputにargvを渡しておかないとuser_inputがnullであるため注意
   token = tokenize(argv[1]);
+  Token *dummy = token;
   program();
 
   printf(".intel_syntax noprefix\n");

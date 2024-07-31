@@ -4,16 +4,6 @@
 #include <stdarg.h>
 #include "9cc.h"
 
-// 新しいトークンを作成し, curに繋げる
-Token *new_token(TokenKind kind, Token *cur, char *str, int len){
-  Token *tok = calloc(1, sizeof(Token));
-  tok->kind = kind;
-  tok->str = str;
-  tok->len = len;
-  cur->next = tok;
-  return tok;
-}
-
 // ノード作成関数を定義する
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs){
   Node *node = calloc(1, sizeof(Node));
@@ -63,6 +53,13 @@ void gen(Node *node){
       printf("  pop rax\n");
       printf("  mov [rax], rdi\n");
       printf("  push rdi\n");
+      return;
+    case ND_RETURN:
+      gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  mov rsp, rbp\n");
+      printf("  pop rbp\n");
+      printf("  ret\n");
       return;
   }
 
@@ -140,6 +137,13 @@ bool consume(char *op){
   token = token->next;
   return true;
 }
+bool consume_return(){
+  if (token->kind != TK_RETURN){
+    return false;
+  }
+  token = token->next;
+  return true;
+}
 /*
 consume_identのimplement*/
 Token *consume_ident(){
@@ -184,8 +188,19 @@ Node *program(){
 }
 
 Node *stmt(){
-  Node *node = expr();
-  expect(";");
+  Node *node;
+
+  if (consume_return()) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_RETURN;
+    node->lhs = expr();
+  } else {
+    node = expr();
+  }
+
+  if (!consume(";")){
+    error_at(token->str, "';'ではないトークンです");
+  }
   return node;
 }
 
