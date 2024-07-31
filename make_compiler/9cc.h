@@ -4,6 +4,7 @@
 // トークンの種類
 typedef enum {
   TK_RESERVED, //記号
+  TK_IDENT, // 識別子
   TK_NUM, // 整数トークン
   TK_EOF, // 入力の終わりを表すトークン
 } TokenKind; 
@@ -41,6 +42,8 @@ typedef enum {
   ND_NE,  // !=
   ND_LT,  // < or >
   ND_LE,  // <= or >=
+  ND_LVAR,   // ローカル変数
+  ND_ASSIGN, // = 
 } NodeKind;
 
 typedef struct Node Node;// 抽象構文木のノードの型
@@ -50,6 +53,7 @@ struct Node {
   Node *lhs;     // 左辺  
   Node *rhs;     // 右辺  
   int val;       // kindがND_NUMの場合のみ使う
+  int offset;    // kindがND_LVARの場合のみ使う
 };
 
 // codegen.cに追加
@@ -57,17 +61,23 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 // ASTからStack machineへのコンパイル
 void gen(Node *node);
-// codegenなどで使われるglobal変数
+// codegenなどで使われるglobal変数 extern 修飾子は変数が別のファイルで定義されていることを示します。
 // 現在着目しているトークン
 extern Token *token;
 // 入力プログラムargv[1]を格納する変数
 extern char *user_input;
+Token *consume_ident(); // identの処理のための関数
 
 // 再帰的に使われるのでプロト関数を定義
+Node *program();
+Node *stmt();
 Node *expr();
+Node *assign();
 Node *primary();
 Node *mul();
 Node *unary();
 Node *equality();
 Node *relational();
 Node *add();
+//codeを格納する場所
+extern Node *code[100];

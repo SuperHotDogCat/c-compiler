@@ -30,12 +30,42 @@ Node *new_node_num(int val){
   return node;
 }
 
+void gen_lval(Node *node){
+  // gen_lvalは、与えられたノードが変数を指しているときに、
+  // その変数のアドレスを計算して、それをスタックにプッシュします。
+  // それ以外の場合にはエラーを表示します。
+  if (node->kind != ND_LVAR){
+    error("代入の左辺値が変数ではありません");
+  }
+
+  printf("  mov rax, rbp\n");
+  printf("  sub rax, %d\n", node->offset);
+  printf("  push rax\n");
+}
+
 // ASTからStack machineへのコンパイル
 void gen(Node *node){
-  if (node->kind == ND_NUM){
-    printf("  push %d\n", node->val);
-    return;
+  switch (node->kind){
+    case ND_NUM:
+      printf("  push %d\n", node->val);
+      return;
+    case ND_LVAR:
+      gen_lval(node);
+      printf("  pop rax\n");
+      printf("  mov rax, [rax]\n");
+      printf("  push rax\n");
+      return;
+    case ND_ASSIGN:
+      gen_lval(node->lhs);
+      gen(node->rhs);
+
+      printf("  pop rdi\n");
+      printf("  pop rax\n");
+      printf("  mov [rax], rdi\n");
+      printf("  push rdi\n");
+      return;
   }
+
   gen(node->lhs); // 左辺compile
   gen(node->rhs); // 右辺compile
   // ここから下は右辺と左辺ができた前提で話が進む
@@ -110,6 +140,16 @@ bool consume(char *op){
   token = token->next;
   return true;
 }
+/*
+consume_identのimplement*/
+Token *consume_ident(){
+  if (token->kind != TK_IDENT){
+    return NULL;
+  }
+  Token *return_token = token;
+  token = token->next;
+  return return_token;
+}
 
 // 次のトークンが期待している記号の時にトークンを一つ進める
 // それ以外の時にはエラーを報告する
@@ -136,10 +176,31 @@ bool at_eof(){
   return token->kind == TK_EOF;
 }
 
+Node *program(){
+  int i = 0;
+  while (!at_eof())
+    code[i++] = stmt();
+  code[i] = NULL;
+}
+
+Node *stmt(){
+  Node *node = expr();
+  expect(";");
+  return node;
+}
+
 Node *expr(){
   // expr文法のparser
-  // expr = equality
-  return equality();
+  // expr = assign
+  return assign();
+}
+
+Node *assign(){
+  Node *node = equality();
+  if (consume("=")){
+    node = new_node(ND_ASSIGN, node, assign());
+  }
+  return node;
 }
 
 Node *equality(){
@@ -197,7 +258,7 @@ Node *add(){
 }
 
 Node *mul(){
-  // mul = primary ("*" primary | "/" primary)* の展開を制作する
+  // mul = unary ("*" unary | "/" unary)* の展開を制作する
   Node *node = unary();
   for (;;){
     if (consume("*")){
@@ -212,10 +273,24 @@ Node *mul(){
 }
 
 Node *primary(){
-  // primary = num | '(' expr ')' を表現する
+  // primary = num | ident | '(' expr ')' を表現する
   if (consume("(")){
     Node *node = expr();
     expect(")");
+    return node;
+  }
+  /*if (token->kind == TK_IDENT) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = (token->str[0] - 'a' + 1) * 8;
+    token = token->next;
+    return node;
+  }*/
+  Token *token = consume_ident();
+  if (token){
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = (token->str[0] - 'a' + 1) * 8;
     return node;
   }
   // そうじゃなければ数値のはず
