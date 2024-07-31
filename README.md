@@ -3,7 +3,7 @@
 # Docker Environment
 ```
 docker build --platform linux/amd64 -t compiler
-docker run -it --rm -v $(pwd):/home/user/c-compiler/ compiler
+docker run -it --rm -v $(pwd):/home/user/c-compiler/ --cap-add=SYS_PTRACE --security-opt="seccomp=unconfined" compiler
 ```
 
 # Reference
