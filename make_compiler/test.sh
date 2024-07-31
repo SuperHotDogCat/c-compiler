@@ -48,5 +48,8 @@ assert 1 '1>=1;'
 assert 0 '1>=2;'
 assert 14 'a = 3;b = 5 * 6 - 8;a + b / 2;'
 assert 14 'a = 3;b = 5 * 6 - 8;return a + b / 2;'
+# 制御構文
+assert 0 'if (1 == 0) return 1;'
+assert 1 'if (1 == 1) return 1;'
 
 echo OK

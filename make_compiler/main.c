@@ -11,6 +11,7 @@ Token *token;
 char *user_input;
 //codeを格納する場所
 Node *code[100];
+int label_index = 0;
 
 int main(int argc, char **argv){
   if (argc != 2) {

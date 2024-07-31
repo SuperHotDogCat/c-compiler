@@ -8,6 +8,10 @@ typedef enum {
   TK_NUM, // 整数トークン
   TK_EOF, // 入力の終わりを表すトークン
   TK_RETURN, // return文を意味するトークン
+  TK_IF, // IFを意味するトークン
+  TK_ELSE, // ELSEを意味するトークン
+  TK_WHILE, // whileを意味するトークン
+  TK_FOR, // forを意味するトークン
 } TokenKind; 
 
 typedef struct Token Token;
@@ -47,6 +51,10 @@ typedef enum {
   ND_LVAR,   // ローカル変数
   ND_ASSIGN, // = 
   ND_RETURN, // return
+  ND_IF, // if
+  ND_ELSE, // else
+  ND_WHILE, // while
+  ND_FOR, // for
 } NodeKind;
 
 typedef struct Node Node;// 抽象構文木のノードの型
@@ -84,3 +92,5 @@ Node *relational();
 Node *add();
 //codeを格納する場所
 extern Node *code[100];
+//一意にラベルを識別するためだけのもの
+extern int label_index;

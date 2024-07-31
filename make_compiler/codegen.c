@@ -61,6 +61,16 @@ void gen(Node *node){
       printf("  pop rbp\n");
       printf("  ret\n");
       return;
+    case ND_IF:
+      gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je  .Lend%d\n", label_index);
+      int label = label_index; // 呼び出しの途中で値が変わるのでローカル変数に
+      label_index++;
+      gen(node->rhs);
+      printf(".Lend%d:\n", label);
+      return;
   }
 
   gen(node->lhs); // 左辺compile
@@ -137,6 +147,15 @@ bool consume(char *op){
   token = token->next;
   return true;
 }
+
+bool consume_if(){
+  if (token->kind != TK_IF){
+    return false;
+  }
+  token = token->next;
+  return true;
+}
+
 bool consume_return(){
   if (token->kind != TK_RETURN){
     return false;
@@ -189,7 +208,14 @@ Node *program(){
 
 Node *stmt(){
   Node *node;
-
+  if (consume_if()){
+    expect("(");
+    node = expr();
+    expect(")");
+    node = new_node(ND_IF, node, stmt()); // else実装できてないです。
+    return node;
+  }
+  // ;が来るもの
   if (consume_return()) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
@@ -197,7 +223,6 @@ Node *stmt(){
   } else {
     node = expr();
   }
-
   if (!consume(";")){
     error_at(token->str, "';'ではないトークンです");
   }

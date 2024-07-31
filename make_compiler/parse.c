@@ -48,6 +48,30 @@ Token *tokenize(char *p){
       p += 6;
       continue;
     }
+    if (memcmp(p, "while", 5) == 0 && !is_alnum(p[5])){
+      cur = new_token(TK_WHILE, cur, p, 5);
+      cur->str = p;
+      p+=5;
+      continue;
+    }
+    if (memcmp(p, "else", 4) == 0 && !is_alnum(p[4])){
+      cur = new_token(TK_ELSE, cur, p, 4);
+      cur->str = p;
+      p+=4;
+      continue;
+    }
+    if (memcmp(p, "for", 3) == 0 && !is_alnum(p[3])){
+      cur = new_token(TK_FOR, cur, p, 3);
+      cur->str = p;
+      p+=3;
+      continue;
+    }
+    if (memcmp(p, "if", 2) == 0 && !is_alnum(p[2])){
+      cur = new_token(TK_IF, cur, p, 2);
+      cur->str = p;
+      p+=2;
+      continue;
+    }
     if ('a' <= *p && *p <= 'z'){
       cur = new_token(TK_IDENT, cur, p++, 1);
       cur->len = 1;
