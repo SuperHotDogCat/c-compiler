@@ -51,5 +51,8 @@ assert 14 'a = 3;b = 5 * 6 - 8;return a + b / 2;'
 # 制御構文
 assert 0 'if (1 == 0) return 1;'
 assert 1 'if (1 == 1) return 1;'
-
+assert 1 'a=2; while (a) a = a - 1; if (a) return 1;'
+assert 0 'a=1; while (a) a = a - 1; if (a) return a;'
+assert 100 'a=1; while (a < 100) a = a + 1; return a;'
+# assert 255 'a=1; while (a < 255) a = a + 1; return a;' なんかデフォルトだと255超えるとオーバーフローするらしいです。
 echo OK

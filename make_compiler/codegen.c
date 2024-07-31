@@ -35,6 +35,7 @@ void gen_lval(Node *node){
 
 // ASTからStack machineへのコンパイル
 void gen(Node *node){
+  int label = label_index;
   switch (node->kind){
     case ND_NUM:
       printf("  push %d\n", node->val);
@@ -62,13 +63,24 @@ void gen(Node *node){
       printf("  ret\n");
       return;
     case ND_IF:
+      label_index++; // 一意にするため
       gen(node->lhs);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je  .Lend%d\n", label_index);
-      int label = label_index; // 呼び出しの途中で値が変わるのでローカル変数に
-      label_index++;
+      printf("  je  .Lend%d\n", label); // 呼び出しの途中で値が変わるのでローカル変数に
       gen(node->rhs);
+      printf(".Lend%d:\n", label);
+      label_index++;
+      return;
+    case ND_WHILE:
+      label_index++; // 一意にするため
+      printf(".Lbegin%d:\n", label);
+      gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .Lend%d\n", label);
+      gen(node->rhs);
+      printf("  jmp .Lbegin%d\n", label);
       printf(".Lend%d:\n", label);
       return;
   }
@@ -156,6 +168,14 @@ bool consume_if(){
   return true;
 }
 
+bool consume_while(){
+  if (token->kind != TK_WHILE){
+    return false;
+  }
+  token = token->next;
+  return true;
+}
+
 bool consume_return(){
   if (token->kind != TK_RETURN){
     return false;
@@ -213,6 +233,13 @@ Node *stmt(){
     node = expr();
     expect(")");
     node = new_node(ND_IF, node, stmt()); // else実装できてないです。
+    return node;
+  }
+  if (consume_while()){
+    expect("(");
+    node = expr();
+    expect(")");
+    node = new_node(ND_WHILE, node, stmt()); // else実装できてないです。
     return node;
   }
   // ;が来るもの
